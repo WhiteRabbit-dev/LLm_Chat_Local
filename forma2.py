@@ -333,8 +333,8 @@ def chk_syst():
 
 def get_llm():
     global llm
-    global MODEL_PATH
-    if MODEL_PATH == str(models_file.get()) and llm is not None:
+    global MODEL_PATH, g_n_gpu_layers, g_n_ctx, g_n_threads
+    if MODEL_PATH == str(models_file.get()) and g_n_gpu_layers == int(entry_n_gpu_layers.get()) and g_n_ctx == int(entry_n_ctx.get()) and g_n_threads == int(entry_n_threads.get()) and llm is not None:
         return llm
     else:
         unload_model()
@@ -348,7 +348,8 @@ def get_llm():
                     n_ctx=int(entry_n_ctx.get()),
                     n_threads=int(entry_n_threads.get()),
                     verbose=False,
-                    use_mlock=False
+                    use_mlock=False,
+                    use_mmap=True
                 )
                 return llm
             except Exception as e:
@@ -546,7 +547,7 @@ block1.grid_columnconfigure(0, weight=1)
 block1.grid_columnconfigure(1, weight=0)
 
 #типа консоль
-Console_main = tk.Text(block1,state="disabled", bg=bg_color_cons, fg=font_cons, width=1, height=1)
+Console_main = tk.Text(block1,state="disabled", bg=bg_color_cons, fg=font_cons, wrap="word", width=1, height=1)
 Console_main.config(state="normal")
 Console_main.insert("end", "> ")  # с новой строки
 Console_main.config(state="disabled")
@@ -577,7 +578,7 @@ block2.grid_rowconfigure(0, weight=1)
 block2.grid_rowconfigure(1, weight=0)
 block2.grid_columnconfigure(0, weight=1)
 
-Console_prompt = tk.Text(block2, bg=bg_color_cons, fg=font_cons, width=1, height=1)
+Console_prompt = tk.Text(block2, bg=bg_color_cons, fg=font_cons, wrap="word", width=1, height=1)
 Console_prompt.grid(row=0, column=0, columnspan=2, sticky="nsew")
 
 lable_stat_1 = tk.Label(block2,justify="left", fg=font_cons, bg=bg_color_cons)
@@ -772,7 +773,7 @@ def thread_animation_loop():
             line += ch
 
             if i >= len(text_monitor): i = 0
-            lable_stat_1.config(text=text_monitor[i:] + " " + text_monitor[:i])
+            lable_stat_1.config(text=text_monitor[i:] + " | " + text_monitor[:i])
             i += 1
 
             time.sleep(0.3)
