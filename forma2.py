@@ -118,7 +118,7 @@ def load_settings():
             log_to_file("Настройки успешно загружены")
             path = Path(str(models_file.get()))
         except Exception as e:
-            log_to_file(f"120.Ошибка чтения настроек: {e}", True)
+            log_to_file(f"Ошибка чтения настроек: {e}", True)
     else:
         save_settings(True)
 
@@ -145,7 +145,7 @@ def save_settings(load = False):
                 f.write(f"prompt={str(Console_prompt.get('1.0', 'end-1c'))}\n")
             log_to_file("Настройки сохранены")
         except Exception as e:
-            log_to_file(f"147.не удалось сохранить настройки: {e}", True)
+            log_to_file(f"не удалось сохранить настройки: {e}", True)
         load_settings()
     else:
         try:
@@ -167,7 +167,7 @@ def save_settings(load = False):
                 f.write(f"prompt={str(Console_prompt.get('1.0', 'end-1c'))}\n")
             log_to_file("Настройки сохранены")
         except Exception as e:
-            log_to_file(f"169.не удалось создать файл сохранения: {e}", True)
+            log_to_file(f"не удалось создать файл сохранения: {e}", True)
 
 def handle_ctrl_key(event):
     kc = event.keycode
@@ -209,19 +209,35 @@ def activate_venv():
     except Exception as e:
         log_to_file(f"не удалось добавить директорию venv: {e}", True)
     try:
+        import psutil
+        import GPUtil
+    except:
+        install_psutil_GPUtil()
+    try:
         import torch
         import llama_cpp
     except:
         install_torch_with_cuda()
-
     log_to_file("библиотеки подготовлены")
 
+def install_psutil_GPUtil():
+    try:
+        subprocess.run(
+            [str(VENV_PIP), "install", "psutil", "GPUtil"],
+            check=True)
+        log_to_file(f"Установлены библиотеки для мониторига состояния ПК")
+    except Exception as e:
+        log_to_file(f"232.не удалось psutil/GPUtil: {e}", True)
+
 def install_cuda(index):
-    subprocess.run(
-        [str(VENV_PIP), "install", "torch",
-         "--index-url", f"https://download.pytorch.org/whl/{index}"],
-        check=True)
-    log_to_file(f"PyTorch установлен версии {index}")
+    try:
+        subprocess.run(
+            [str(VENV_PIP), "install", "torch",
+             "--index-url", f"https://download.pytorch.org/whl/{index}"],
+            check=True)
+        log_to_file(f"PyTorch установлен версии {index}")
+    except Exception as e:
+        log_to_file(f"242.не удалось установить PyTorch: {e}", True)
 
 def install_torch_with_cuda():
     try:
@@ -253,13 +269,10 @@ def install_torch_with_cuda():
         try:
             install_cuda(index)
         except:
-            try:
-                log_to_file(f"при попытке установить PyTorch {index} что пошло не по плану...")
-                log_to_file(f"пробуем установить (универсальную) PyTorch cu124...")
-                index = "cu124"
-                install_cuda(index)
-            except Exception as e:
-                log_to_file(f"261.не удалось установить PyTorch: {e}", True)
+            log_to_file(f"при попытке установить PyTorch {index} что пошло не по плану...")
+            log_to_file(f"пробуем установить (универсальную) PyTorch cu124...")
+            index = "cu124"
+            install_cuda(index)
     else:
         log_to_file("Устанавливаю CPU-версию PyTorch")
         index = "cpu"
@@ -560,20 +573,17 @@ block2 = tk.LabelFrame(right_column,text="Промпт",bd=0,bg=bg_color)
 block2.grid_propagate(False)
 block2.grid(row=0, column=0, sticky='nsew', padx=space_in, pady=space_in)
 
-block2.grid_rowconfigure(0, weight=4)
-block2.grid_rowconfigure(1, weight=1)
-block2.grid_rowconfigure(2, weight=1)
+block2.grid_rowconfigure(0, weight=1)
+block2.grid_rowconfigure(1, weight=0)
 block2.grid_columnconfigure(0, weight=1)
-block2.grid_columnconfigure(1, weight=1)
 
 Console_prompt = tk.Text(block2, bg=bg_color_cons, fg=font_cons, width=1, height=1)
 Console_prompt.grid(row=0, column=0, columnspan=2, sticky="nsew")
 
-lable_stat_1 = tk.Label(block2, bg=bg_color)
-lable_stat_1.grid(row=1, column=0, sticky="nw")
-#
-#
-#
+lable_stat_1 = tk.Label(block2,justify="left", fg=font_cons, bg=bg_color_cons)
+lable_stat_1.grid(row=1, column=0, sticky="nsew")
+
+
 # Блок 3: НИЗ 1/3
 # , relief='solid', bd=2
 block3 = tk.Frame(right_column, bg=bg_color)
@@ -726,12 +736,15 @@ def on_closing():
     log_to_file("Приложение закрыто")
     root.destroy()
 
+
+
 def thread_animation_loop():
     try:
         global FACE_NOW
+        global text_monitor
         face_now = str(FACE_NOW)
         face = open(face_now, "r", encoding="utf-8").read()
-
+        i = 0
         ch = -1
         line = 0
         while True:
@@ -755,14 +768,47 @@ def thread_animation_loop():
                 root.after(0, lambda: label_face.config(text="\n\n\n\n" + face))
             elif line == 6:
                 root.after(0, lambda: label_face.config(text="\n\n\n\n" + face))
-
             # lines.insert(0, "# Настройки программы\n")
             line += ch
+
+            if i >= len(text_monitor): i = 0
+            lable_stat_1.config(text=text_monitor[i:] + " " + text_monitor[:i])
+            i += 1
+
             time.sleep(0.3)
     except Exception as e:
-        log_to_file(f"Произошла ошибка при отрисовке морды: {e}")
+        log_to_file(f"799.Произошла ошибка: {e}")
+
+def get_cpu_temperature():
+    try:
+        result = subprocess.run(
+            ["nvidia-smi", "--query-gpu=temperature.gpu", "--format=csv,noheader"],
+            capture_output=True, text=True, timeout=5
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            temp = float(result.stdout.strip())
+            return temp
+    except Exception as e:
+        log_to_file(f"Ошибка сбора температуры процессора: {e}")
+    return None
+
+text_monitor = ""
+
+def monitor_text ():
+    import psutil
+    import GPUtil
+    global text_monitor
+    while True:
+        try:
+            text_monitor = (
+                f"CPU temp: {get_cpu_temperature()}°C | CPU load: {psutil.cpu_percent()}% | GPU mem: {GPUtil.getGPUs()[0].memoryUsed:.0f} МБ / {GPUtil.getGPUs()[0].memoryTotal:.0f} МБ ({GPUtil.getGPUs()[0].memoryUtil * 100:.1f}%)"
+                f" | GPU temp: {GPUtil.getGPUs()[0].temperature}°C | GPU load: {GPUtil.getGPUs()[0].load * 100:.1f}%")
+        except Exception as e:
+            log_to_file(f"Ошибка при сборе мониторинга: {e}")
+        time.sleep(3)
 
 root.after(100, lambda: threading.Thread(target=thread_animation_loop, daemon=True).start())
+root.after(100, lambda: threading.Thread(target=monitor_text, daemon=True).start())
 
 root.protocol("WM_DELETE_WINDOW", on_closing)
 log_to_file("Приложение запущено")
